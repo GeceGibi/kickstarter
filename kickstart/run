@@ -1,0 +1,15 @@
+#!/bin/zsh
+export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
+set -o pipefail
+if [[ -f "$HOME/dev/env.sh" ]]; then
+  . "$HOME/dev/env.sh"
+fi
+target="$1"
+here="$(cd "$(dirname "$0")" && pwd)"
+log="$here/${target:t}.log"
+: > "$log"
+while true; do
+  "$target" 2>&1 | /usr/bin/tee -a "$log"
+  echo "exit $?" | /usr/bin/tee -a "$log"
+  /bin/sleep 10
+done
