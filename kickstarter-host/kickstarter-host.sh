@@ -31,15 +31,18 @@ hide() {
   osascript -e 'tell application "Screen Sharing" to quit' >/dev/null 2>&1 || true
 }
 
-run_vm() {
-  local log="$here/.tart.log" spid tpid line url
+tart_up() {
+  [[ -f "$here/.tart.pid" ]] || return 1
+  kill -0 "$(cat "$here/.tart.pid")" 2>/dev/null
+}
+
+start_vm() {
+  local log="$here/.tart.log" line url
   rm -f "$log"
+  mkfifo "$log"
   script -qF "$log" tart run --no-graphics --vnc "$name" &
-  spid=$!
-  while [[ ! -f "$log" ]] && kill -0 "$spid" 2>/dev/null; do
-    sleep 0.2
-  done
-  tail -n +1 -f "$log" | while IFS= read -r line; do
+  printf '%s\n' "$!" > "$here/.tart.pid"
+  while IFS= read -r line; do
     line="${line%$'\r'}"
     printf '%s\n' "$line"
     case "$line" in
@@ -50,29 +53,22 @@ run_vm() {
         open "$url"
         ;;
     esac
-  done &
-  tpid=$!
-  wait "$spid"
-  kill "$tpid" 2>/dev/null || true
-  wait "$tpid" 2>/dev/null || true
+  done < "$log"
+  rm -f "$log" "$here/.tart.pid"
 }
 
 open_console
 
 while true; do
-  if running; then
-    while running; do
-      sleep 10
-    done
-  fi
-  hide
-  tart delete "$name" >/dev/null 2>&1 || true
-  if tart clone "$base" "$name"; then
-    run_vm || true
+  if ! running && ! tart_up; then
     hide
+    tart stop "$name" >/dev/null 2>&1 || true
     tart delete "$name" >/dev/null 2>&1 || true
-  else
-    echo "clone failed: $base -> $name" >&2
+    if tart clone "$base" "$name"; then
+      start_vm &
+    else
+      echo "clone failed: $base -> $name" >&2
+    fi
   fi
   sleep 10
 done

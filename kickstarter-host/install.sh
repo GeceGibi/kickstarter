@@ -5,7 +5,8 @@ script="$here/kickstarter-host.sh"
 agent="$HOME/Library/LaunchAgents/kickstarter-host.plist"
 uid="$(id -u)"
 
-launchctl bootout "gui/${uid}/kickstarter-host" 2>/dev/null || true
+domain="gui/${uid}"
+launchctl bootout "$domain/kickstarter-host" 2>/dev/null || true
 rm -f "$agent"
 
 mkdir -p "$HOME/Library/LaunchAgents"
@@ -34,5 +35,8 @@ cat > "$agent" <<EOF
 </plist>
 EOF
 plutil -lint "$agent"
-launchctl bootstrap "gui/${uid}" "$agent"
-launchctl enable "gui/${uid}/kickstarter-host"
+if ! launchctl bootstrap "$domain" "$agent"; then
+  launchctl kickstart -k "$domain/kickstarter-host"
+fi
+launchctl enable "$domain/kickstarter-host"
+print "kickstarter-host started"
