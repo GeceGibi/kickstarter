@@ -1,7 +1,6 @@
 #!/bin/bash
 # Host login service. Runs a throwaway clone of base-macos. Never starts base-macos.
-# The VM has no window of its own. Screen Sharing opens vnc://192.168.64.100.
-# v in the control terminal hides or shows it again.
+# The VM has no window of its own. v in the control terminal opens or hides vnc://192.168.64.100.
 
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
 
@@ -10,7 +9,6 @@ base="base-macos"
 name="ci-macos"
 picture="vnc://192.168.64.100"
 urlfile="$here/.vnc.url"
-shown="$here/.vnc.shown"
 
 running() {
   tart get "$name" --format json 2>/dev/null | grep -q '"Running" *: *true'
@@ -51,16 +49,8 @@ tart_young() {
   (( now - started < 30 ))
 }
 
-show_once() {
-  [[ -f "$shown" ]] && return
-  nc -z -G 1 192.168.64.100 5900 2>/dev/null || return
-  touch "$shown"
-  open "$picture"
-}
-
 start_vm() {
   printf '%s\n' "$picture" > "$urlfile"
-  rm -f "$shown"
   tart run --no-graphics "$name" &
   local pid=$!
   printf '%s %s\n' "$pid" "$(date +%s)" > "$here/.tart.pid"
@@ -72,7 +62,6 @@ while true; do
   open_console
   if running; then
     [[ -s "$urlfile" ]] || printf '%s\n' "$picture" > "$urlfile"
-    show_once
     sleep 10
     continue
   fi

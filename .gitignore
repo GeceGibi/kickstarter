@@ -2,7 +2,6 @@
 kickstarter-vm/.windows/
 kickstarter-vm/paths
 kickstarter-host/.vnc.url
-kickstarter-host/.vnc.shown
 kickstarter-host/.console.pid
 kickstarter-host/.tart.log
 kickstarter-host/.tart.pid
