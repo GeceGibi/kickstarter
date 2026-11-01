@@ -1,6 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
+# Apple Silicon only.
 if [ "$(uname -m)" != "arm64" ]; then
   echo "This script is for Apple Silicon (arm64)." >&2
   exit 1
@@ -10,6 +11,7 @@ root="$(cd "$(dirname "$0")" && pwd)"
 dev="$HOME/dev"
 flutter_home="$dev/flutter"
 
+# Xcode or the Command Line Tools must exist before Homebrew and git.
 if ! xcode-select -p >/dev/null 2>&1; then
   if [ -d /Applications/Xcode.app ]; then
     sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
@@ -20,6 +22,7 @@ if ! xcode-select -p >/dev/null 2>&1; then
   fi
 fi
 
+# Use Homebrew if it is already installed, otherwise install it.
 if [ -x /opt/homebrew/bin/brew ]; then
   eval "$(/opt/homebrew/bin/brew shellenv)"
 elif command -v brew >/dev/null 2>&1; then
@@ -30,6 +33,7 @@ else
   eval "$(/opt/homebrew/bin/brew shellenv)"
 fi
 
+# Install a formula or cask only when it is missing.
 brew_formula() {
   if brew list --formula "$1" >/dev/null 2>&1; then
     return 0
@@ -46,17 +50,20 @@ brew_cask() {
   brew install --cask "$1"
 }
 
+# Java 17, Android command-line tools, CocoaPods, Fastlane.
 brew_cask temurin@17
 brew_cask android-commandlinetools
 brew_formula cocoapods
 brew_formula fastlane
 
+# Flutter lives at ~/dev/flutter. Clone stable only when the binary is missing.
 mkdir -p "$dev"
 if [ ! -x "$flutter_home/bin/flutter" ]; then
   echo "==> Flutter"
   git clone --depth 1 --branch stable https://github.com/flutter/flutter.git "$flutter_home"
 fi
 
+# Shell env for Flutter, Java, sdkmanager, and adb. New terminals read this from ~/.zshrc.
 cat > "$dev/env.sh" <<'EOF'
 eval "$(/opt/homebrew/bin/brew shellenv)"
 export JAVA_HOME="$(/usr/libexec/java_home -v 17)"
@@ -65,6 +72,7 @@ export ANDROID_SDK_ROOT="$ANDROID_HOME"
 export PATH="$HOME/dev/flutter/bin:$JAVA_HOME/bin:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH"
 EOF
 
+# Replace the runner-setup block in ~/.zshrc and drop an old ~/flutter/bin path.
 zshrc="$HOME/.zshrc"
 touch "$zshrc"
 tmp="$(mktemp)"
@@ -86,15 +94,16 @@ cat >> "$zshrc" <<'EOF'
 # <<< runner-setup <<<
 EOF
 
+# Stop if the PATH files were not written.
 if ! grep -F -q '$HOME/dev/env.sh' "$zshrc" || ! grep -F -q '$HOME/dev/flutter/bin' "$dev/env.sh"; then
   echo "Failed to write Flutter to PATH in ~/.zshrc" >&2
   exit 1
 fi
 echo "PATH is in ~/.zshrc. Open a new terminal, or run: source ~/.zshrc"
-
-# shellcheck disable=SC1091
+# This process needs the same PATH for sdkmanager and flutter.
 . "$dev/env.sh"
 
+# Read the Android platform and NDK versions Flutter expects.
 ext="$flutter_home/packages/flutter_tools/gradle/src/main/kotlin/FlutterExtension.kt"
 compile="$(sed -n 's/.*compileSdkVersion: Int = \([0-9][0-9]*\).*/\1/p' "$ext")"
 ndk="$(sed -n 's/.*ndkVersion: String = "\([^"]*\)".*/\1/p' "$ext")"
@@ -105,6 +114,7 @@ if [ -z "$compile" ] || [ -z "$ndk" ]; then
   exit 1
 fi
 
+# Accept Android licenses, then install any missing SDK packages.
 yes | sdkmanager --licenses >/dev/null || true
 
 sdk_install() {
@@ -120,9 +130,11 @@ sdk_install "platforms;android-${compile}"
 sdk_install "build-tools;${compile}.0.0"
 sdk_install "ndk;${ndk}"
 
+# Point Flutter at the SDK and download engine artifacts.
 flutter config --android-sdk "$ANDROID_HOME" --no-analytics
 flutter precache --android
 
+# iOS builds need Xcode.app. Android setup still finishes without it.
 if [ -d /Applications/Xcode.app ]; then
   sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
   sudo xcodebuild -license accept
@@ -131,5 +143,6 @@ else
   echo "Xcode.app is missing. Android is ready. Install Xcode, then run setup.sh again." >&2
 fi
 
+# Register kickstart.sh as the login agent.
 echo "==> LaunchAgent"
 "$root/kickstart/install.sh"

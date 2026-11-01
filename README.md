@@ -16,10 +16,6 @@ Xcode.app, signing certificates, and the GitHub Actions runner registration are 
 
 ## Login startup
 
-Add one absolute path per line in `kickstart/paths`, then:
+Run `./kickstart/install.sh` once. It registers `kickstart.sh` as the login agent.
 
-```sh
-./kickstart/install.sh
-```
-
-Each path that exists opens in a Terminal window at login.
+Add one absolute path per line in `kickstart/paths`. The next login reads that file. A new path does not need install again.

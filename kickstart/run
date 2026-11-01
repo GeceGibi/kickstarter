@@ -1,4 +1,6 @@
 #!/bin/zsh
+# Keeps one program alive inside the Terminal window kickstart opened.
+# A shebang shell does not read ~/.zshrc, so load the toolchain env here.
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
 if [[ -f "$HOME/dev/env.sh" ]]; then
   . "$HOME/dev/env.sh"
