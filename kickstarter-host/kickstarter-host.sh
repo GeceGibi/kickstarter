@@ -32,17 +32,29 @@ hide() {
 }
 
 run_vm() {
-  script -qF /dev/null tart run --no-graphics --vnc "$name" | while IFS= read -r line; do
+  local log="$here/.tart.log" spid tpid line url
+  rm -f "$log"
+  script -qF "$log" tart run --no-graphics --vnc "$name" &
+  spid=$!
+  while [[ ! -f "$log" ]] && kill -0 "$spid" 2>/dev/null; do
+    sleep 0.2
+  done
+  tail -n +1 -f "$log" | while IFS= read -r line; do
     line="${line%$'\r'}"
     printf '%s\n' "$line"
     case "$line" in
-      "VNC server is running at "*)
-        url="${line#VNC server is running at }"
+      *"VNC server is running at "*)
+        url="${line##*VNC server is running at }"
+        url="${url%$'\r'}"
         printf '%s\n' "$url" > "$urlfile"
         open "$url"
         ;;
     esac
-  done
+  done &
+  tpid=$!
+  wait "$spid"
+  kill "$tpid" 2>/dev/null || true
+  wait "$tpid" 2>/dev/null || true
 }
 
 open_console

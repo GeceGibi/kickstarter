@@ -9,6 +9,7 @@ trap 'rm -f "$here/.console.pid"' EXIT
 print "v: show or hide"
 while read -k 1 key; do
   [[ "$key" == v ]] || continue
+  print
   if [[ ! -s "$urlfile" ]]; then
     print "VM has no picture yet"
     continue
