@@ -21,12 +21,14 @@ cat > "$agent" <<EOF
 	<string>${esc}</string>
 	<key>RunAtLoad</key>
 	<true/>
+	<key>KeepAlive</key>
+	<true/>
+	<key>ThrottleInterval</key>
+	<integer>10</integer>
 	<key>LimitLoadToSessionType</key>
 	<string>Aqua</string>
 </dict>
 </plist>
 EOF
 plutil -lint "$agent"
-# Load it for this GUI login. RunAtLoad starts kickstarter-vm.sh now and at each login.
 launchctl bootstrap "gui/${uid}" "$agent"
-launchctl enable "gui/${uid}/kickstarter-vm"

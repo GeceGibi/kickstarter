@@ -12,10 +12,10 @@ That registers a login service. It clones `base-macos` to `ci-macos`, runs only 
 
 ## VM
 
-Inside the VM:
+Once, while building `base-macos`:
 
 ```sh
-./setup.sh
+./kickstarter-vm/install.sh
 ```
 
-That registers `kickstarter-vm`. Add one absolute path per line in `kickstarter-vm/paths`. The next login reads that file.
+Put one absolute path per line in `kickstarter-vm/paths` before saving the image. Every clone starts that service at login. If a program exits, it is started again after 10 seconds. The VM can stay up for months.
