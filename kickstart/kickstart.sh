@@ -3,8 +3,7 @@
 
 paths=(
   # /Users/user/script.sh
-  # /Users/user/script2.sh
-  # /Users/user/file.app
+  # /Users/user/executable
 )
 
 here="$(cd "$(dirname "$0")" && pwd)"
