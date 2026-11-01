@@ -31,9 +31,23 @@ hide() {
   osascript -e 'tell application "Screen Sharing" to quit' >/dev/null 2>&1 || true
 }
 
+tart_pid() {
+  awk 'NR == 1 { print $1 }' "$here/.tart.pid" 2>/dev/null
+}
+
 tart_up() {
-  [[ -f "$here/.tart.pid" ]] || return 1
-  kill -0 "$(cat "$here/.tart.pid")" 2>/dev/null
+  local pid
+  pid="$(tart_pid)"
+  [[ -n "$pid" ]] || return 1
+  kill -0 "$pid" 2>/dev/null
+}
+
+tart_young() {
+  local started now
+  started="$(awk 'NR == 1 { print $2 }' "$here/.tart.pid" 2>/dev/null)"
+  [[ -n "$started" ]] || return 1
+  now="$(date +%s)"
+  (( now - started < 30 ))
 }
 
 start_vm() {
@@ -41,7 +55,7 @@ start_vm() {
   rm -f "$log"
   mkfifo "$log"
   script -qF "$log" tart run --no-graphics --vnc "$name" &
-  printf '%s\n' "$!" > "$here/.tart.pid"
+  printf '%s %s\n' "$!" "$(date +%s)" > "$here/.tart.pid"
   while IFS= read -r line; do
     line="${line%$'\r'}"
     printf '%s\n' "$line"
@@ -57,10 +71,18 @@ start_vm() {
   rm -f "$log" "$here/.tart.pid"
 }
 
-open_console
-
 while true; do
-  if ! running && ! tart_up; then
+  open_console
+  if ! running; then
+    if tart_up && tart_young; then
+      sleep 10
+      continue
+    fi
+    if tart_up; then
+      kill "$(tart_pid)" 2>/dev/null || true
+      sleep 1
+    fi
+    rm -f "$here/.tart.pid"
     hide
     tart stop "$name" >/dev/null 2>&1 || true
     tart delete "$name" >/dev/null 2>&1 || true
