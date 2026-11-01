@@ -9,7 +9,7 @@ launchctl bootout "gui/${uid}/kickstarter-host" 2>/dev/null || true
 rm -f "$agent"
 
 mkdir -p "$HOME/Library/LaunchAgents"
-chmod +x "$script"
+chmod +x "$script" "$here/console.command"
 esc="${script//&/&amp;}"
 esc="${esc//</&lt;}"
 esc="${esc//>/&gt;}"

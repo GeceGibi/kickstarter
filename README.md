@@ -8,7 +8,7 @@ On the host Mac, once:
 ./kickstarter-host/install.sh
 ```
 
-That registers a login service. It clones `base-macos` to `ci-macos`, runs only the clone, and deletes the clone when it stops. Ten seconds later it clones again. `base-macos` is never started.
+That registers a login service. It clones `base-macos` to `ci-macos`, runs only the clone, and deletes the clone when it stops. Ten seconds later it clones again. `base-macos` is never started. Screen Sharing opens on its own when the picture is ready. In the control terminal, `v` hides or shows it. The VM keeps running.
 
 ## VM
 

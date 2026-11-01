@@ -1,3 +1,5 @@
 .DS_Store
 kickstarter-vm/.windows/
 kickstarter-vm/paths
+kickstarter-host/.vnc.url
+kickstarter-host/.console.pid
