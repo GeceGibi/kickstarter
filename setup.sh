@@ -65,9 +65,6 @@ export ANDROID_SDK_ROOT="$ANDROID_HOME"
 export PATH="$HOME/dev/flutter/bin:$JAVA_HOME/bin:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH"
 EOF
 
-# shellcheck disable=SC1091
-. "$dev/env.sh"
-
 zshrc="$HOME/.zshrc"
 touch "$zshrc"
 tmp="$(mktemp)"
@@ -78,6 +75,7 @@ awk '
   /java_home -v 17/ { next }
   /ANDROID_HOME=.*android-commandlinetools/ { next }
   /cmdline-tools\/latest\/bin/ { next }
+  /flutter\/bin/ && !/dev\/flutter\/bin/ { next }
   { print }
 ' "$zshrc" > "$tmp"
 cat "$tmp" > "$zshrc"
@@ -87,6 +85,15 @@ cat >> "$zshrc" <<'EOF'
 [ -f "$HOME/dev/env.sh" ] && . "$HOME/dev/env.sh"
 # <<< runner-setup <<<
 EOF
+
+if ! grep -F -q '$HOME/dev/env.sh' "$zshrc" || ! grep -F -q '$HOME/dev/flutter/bin' "$dev/env.sh"; then
+  echo "Failed to write Flutter to PATH in ~/.zshrc" >&2
+  exit 1
+fi
+echo "PATH is in ~/.zshrc. Open a new terminal, or run: source ~/.zshrc"
+
+# shellcheck disable=SC1091
+. "$dev/env.sh"
 
 ext="$flutter_home/packages/flutter_tools/gradle/src/main/kotlin/FlutterExtension.kt"
 compile="$(sed -n 's/.*compileSdkVersion: Int = \([0-9][0-9]*\).*/\1/p' "$ext")"
