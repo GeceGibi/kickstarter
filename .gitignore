@@ -5,3 +5,4 @@ kickstarter-host/.vnc.url
 kickstarter-host/.console.pid
 kickstarter-host/.tart.log
 kickstarter-host/.tart.pid
+kickstarter-host/.manual-stop

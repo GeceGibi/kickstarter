@@ -35,6 +35,7 @@ cat > "$agent" <<EOF
 </plist>
 EOF
 plutil -lint "$agent"
+rm -f "$here/.manual-stop"
 if ! launchctl bootstrap "$domain" "$agent"; then
   launchctl kickstart -k "$domain/kickstarter-host"
 fi

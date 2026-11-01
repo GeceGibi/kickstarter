@@ -9,6 +9,7 @@ base="base-macos"
 name="ci-macos"
 picture="vnc://192.168.64.100"
 urlfile="$here/.vnc.url"
+stopfile="$here/.manual-stop"
 
 running() {
   tart get "$name" --format json 2>/dev/null | grep -q '"Running" *: *true'
@@ -49,6 +50,18 @@ tart_young() {
   (( now - started < 30 ))
 }
 
+hold() {
+  [[ -f "$stopfile" ]] || return 1
+  hide
+  tart stop "$name" >/dev/null 2>&1 || true
+  if tart_up; then
+    kill "$(tart_pid)" 2>/dev/null || true
+  fi
+  rm -f "$here/.tart.pid"
+  launchctl bootout "gui/$(id -u)/kickstarter-host" >/dev/null 2>&1 || true
+  exit 0
+}
+
 start_vm() {
   printf '%s\n' "$picture" > "$urlfile"
   tart run --no-graphics "$name" &
@@ -59,6 +72,7 @@ start_vm() {
 }
 
 while true; do
+  hold || true
   open_console
   if running; then
     [[ -s "$urlfile" ]] || printf '%s\n' "$picture" > "$urlfile"
@@ -77,7 +91,13 @@ while true; do
   hide
   tart stop "$name" >/dev/null 2>&1 || true
   tart delete "$name" >/dev/null 2>&1 || true
+  if [[ -f "$stopfile" ]]; then
+    hold || true
+  fi
   if tart clone "$base" "$name"; then
+    if [[ -f "$stopfile" ]]; then
+      hold || true
+    fi
     start_vm &
   else
     echo "clone failed: $base -> $name" >&2
