@@ -26,10 +26,11 @@ Each path that exists opens in a Terminal window at login.
 
 ## One-time Flutter move
 
-If Flutter is still at `$HOME/flutter`:
+If Flutter is still at `$HOME/flutter`, or the shell cannot find `flutter` after the move:
 
 ```sh
 ./migration.sh
+source ~/.zshrc
 ```
 
-Delete it after it runs.
+The script moves the install when needed and points `~/.zshrc` at `$HOME/dev/flutter/bin`. Delete it after it runs.
