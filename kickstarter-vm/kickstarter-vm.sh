@@ -17,7 +17,7 @@ alive() {
 
 open_one() {
   local target="$1"
-  local file="$here/.windows/${target:t}.command"
+  local file="$here/.windows/${target//\//_}.command"
   if [[ ! -e "$target" ]]; then
     print -u2 -- "missing, skip: $target"
     return

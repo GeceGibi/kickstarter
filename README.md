@@ -8,7 +8,11 @@ On the host Mac, once:
 ./kickstarter-host/install.sh
 ```
 
-That registers a login service. It clones `base-macos` to `ci-macos`, runs only the clone, and deletes the clone when it stops. Ten seconds later it clones again. `base-macos` is never started. In the control terminal, `v` opens or hides the picture. The VM keeps running. `k` or Control+C stops it and leaves it stopped until `install.sh` is run again.
+That registers a login service. It clones `base-macos` to `ci-macos`, runs only the clone, and deletes the clone when it stops. Ten seconds later it clones again. `base-macos` is never started.
+
+The control terminal keeps one line up to date: how long `ci-macos` has been up and `clone`, the disk the clone holds on top of `base-macos`. That is what deleting the clone frees. `du` would show the whole base image, because an APFS clone shares its blocks with `base-macos`; `private-size.py` counts only the blocks the clone owns.
+
+`v` opens or hides the picture. The VM keeps running. `k` or Control+C stops and deletes the clone and leaves it stopped until `install.sh` is run again.
 
 ## VM
 

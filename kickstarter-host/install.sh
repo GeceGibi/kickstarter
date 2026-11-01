@@ -1,14 +1,15 @@
 #!/bin/zsh
+# Registers kickstarter-host as a login service and starts it. Also clears a k stop.
 set -e
-here="$(cd "$(dirname "$0")" && pwd)"
+here="${0:A:h}"
+label="kickstarter-host"
 script="$here/kickstarter-host.sh"
-agent="$HOME/Library/LaunchAgents/kickstarter-host.plist"
-uid="$(id -u)"
+agent="$HOME/Library/LaunchAgents/$label.plist"
+domain="gui/$(id -u)"
 
-domain="gui/${uid}"
-launchctl bootout "$domain/kickstarter-host" 2>/dev/null || true
-rm -f "$agent"
-
+launchctl bootout "$domain/$label" 2>/dev/null || true
+# bootout returns before the old service is gone; bootstrap fails with error 5 until then.
+while launchctl print "$domain/$label" >/dev/null 2>&1; do sleep 0.5; done
 mkdir -p "$HOME/Library/LaunchAgents"
 chmod +x "$script" "$here/console.command"
 esc="${script//&/&amp;}"
@@ -20,7 +21,7 @@ cat > "$agent" <<EOF
 <plist version="1.0">
 <dict>
 	<key>Label</key>
-	<string>kickstarter-host</string>
+	<string>$label</string>
 	<key>Program</key>
 	<string>${esc}</string>
 	<key>RunAtLoad</key>
@@ -36,8 +37,6 @@ cat > "$agent" <<EOF
 EOF
 plutil -lint "$agent"
 rm -f "$here/.manual-stop"
-if ! launchctl bootstrap "$domain" "$agent"; then
-  launchctl kickstart -k "$domain/kickstarter-host"
-fi
-launchctl enable "$domain/kickstarter-host"
-print "kickstarter-host started"
+launchctl enable "$domain/$label"
+launchctl bootstrap "$domain" "$agent"
+print "$label started"

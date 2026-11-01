@@ -1,87 +1,73 @@
 #!/bin/zsh
-# Host control window. v shows or hides the VM. The VM keeps running.
+# Host control window. One line shows how long ci-macos has been up and how much
+# disk the clone holds on top of base-macos, which is what deleting it frees.
+# v shows or hides the VM picture. The VM keeps running. k or Control+C stops it.
 
-here="$(cd "$(dirname "$0")" && pwd)"
-urlfile="$here/.vnc.url"
-printf '%s\n' "$$" > "$here/.console.pid"
+export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+
+here="${0:A:h}"
+name="ci-macos"
+picture="vnc://192.168.64.100"
+vm_dir="${TART_HOME:-$HOME/.tart}/vms/$name"
+
+print -- "$$" > "$here/.console.pid"
 trap 'rm -f "$here/.console.pid"' EXIT
 
-manual_stop() {
+stop_vm() {
   touch "$here/.manual-stop"
-  osascript -e 'tell application "Screen Sharing" to quit' >/dev/null 2>&1 || true
-  launchctl bootout "gui/$(id -u)/kickstarter-host" >/dev/null 2>&1 || true
-  PATH="/opt/homebrew/bin:/usr/local/bin:$PATH" tart stop ci-macos >/dev/null 2>&1 || true
-  print
-  print "stopped"
+  osascript -e 'tell application "Screen Sharing" to quit' >/dev/null 2>&1
+  print -n -- "\r\e[2Kstopping"
+  tart stop "$name" >/dev/null 2>&1
+  launchctl bootout "gui/$(id -u)/kickstarter-host" >/dev/null 2>&1
+  tart delete "$name" >/dev/null 2>&1
+  print -- "\r\e[2Kstopped"
   exit 0
 }
-trap manual_stop INT
+trap stop_vm INT
 
-vm_dir="${TART_HOME:-$HOME/.tart}/vms/ci-macos"
-disk="-"
-disk_at=0
-
-age() {
-  local started now elapsed h m s
-  started="$(awk 'NR == 1 { print $2 }' "$here/.tart.pid" 2>/dev/null)"
-  [[ -n "$started" ]] || return 1
-  now="$(date +%s)"
-  elapsed=$((now - started))
-  ((elapsed < 0)) && elapsed=0
-  h=$((elapsed / 3600))
-  m=$(((elapsed % 3600) / 60))
-  s=$((elapsed % 60))
-  if ((h > 0)); then
-    printf '%dh %02dm' "$h" "$m"
-  elif ((m > 0)); then
-    printf '%dm %02ds' "$m" "$s"
-  else
-    printf '%ds' "$s"
-  fi
+# ps etime is [[dd-]hh:]mm:ss
+uptime_of_vm() {
+  local pid etime
+  pid="$(pgrep -f "tart run .*$name\$" | head -n 1)"
+  [[ -n "$pid" ]] || return 1
+  etime="$(ps -o etime= -p "$pid")"
+  etime="${etime// /}"
+  [[ -n "$etime" ]] || return 1
+  print -rn -- "${etime/-/d }"
 }
 
-usage() {
-  local now
-  now="$(date +%s)"
-  ((now - disk_at < 60)) && return
-  disk_at="$now"
-  if [[ -d "$vm_dir" ]]; then
-    disk="$(du -sh "$vm_dir" 2>/dev/null | awk 'NR == 1 { print $1 }')"
-    [[ -n "$disk" ]] || disk="-"
-  else
-    disk="-"
-  fi
-}
-
-show_status() {
-  local up
-  usage
-  if up="$(age)"; then
-    print -n -- "\r\e[2Kup ${up}  ${disk}"
-  else
-    print -n -- "\r\e[2Kdown  ${disk}"
-  fi
+clone_size() {
+  local bytes
+  [[ -d "$vm_dir" ]] || return 1
+  bytes="$(/usr/bin/python3 "$here/private-size.py" "$vm_dir" 2>/dev/null)" || return 1
+  printf '%.1fG' "$((bytes / 1073741824.0))"
 }
 
 print "v: show or hide"
 print "k: stop"
+size="-"
+tick=0
 while true; do
-  show_status
-  key=""
-  read -k 1 -t 10 key || true
-  [[ -z "$key" ]] && continue
-  [[ "$key" == k ]] && manual_stop
-  [[ "$key" == v ]] || continue
-  print
-  if [[ ! -s "$urlfile" ]]; then
-    print "VM has no picture yet"
-    continue
+  if ((tick % 10 == 0)); then
+    size="$(clone_size)" || size="-"
   fi
-  if pgrep -xq "Screen Sharing"; then
-    osascript -e 'tell application "Screen Sharing" to quit' >/dev/null
-    print "hidden"
+  ((tick++))
+  if up="$(uptime_of_vm)"; then
+    print -n -- "\r\e[2Kup ${up}  clone ${size}"
   else
-    open "$(cat "$urlfile")"
-    print "visible"
+    print -n -- "\r\e[2Kdown  clone ${size}"
   fi
+
+  key=""
+  read -s -k 1 -t 1 key
+  case "$key" in
+    k) stop_vm ;;
+    v)
+      if pgrep -xq "Screen Sharing"; then
+        osascript -e 'tell application "Screen Sharing" to quit' >/dev/null
+      elif uptime_of_vm >/dev/null; then
+        open "$picture"
+      fi
+      ;;
+  esac
 done

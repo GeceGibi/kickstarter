@@ -1,10 +1,15 @@
 #!/bin/zsh
+# Run once inside base-macos. Every clone then starts kickstarter-vm at login.
 set -e
-here="$(cd "$(dirname "$0")" && pwd)"
+here="${0:A:h}"
+label="kickstarter-vm"
 script="$here/kickstarter-vm.sh"
-agent="$HOME/Library/LaunchAgents/kickstarter-vm.plist"
-uid="$(id -u)"
+agent="$HOME/Library/LaunchAgents/$label.plist"
+domain="gui/$(id -u)"
 
+launchctl bootout "$domain/$label" 2>/dev/null || true
+# bootout returns before the old service is gone; bootstrap fails with error 5 until then.
+while launchctl print "$domain/$label" >/dev/null 2>&1; do sleep 0.5; done
 mkdir -p "$HOME/Library/LaunchAgents"
 chmod +x "$script" "$here/run"
 esc="${script//&/&amp;}"
@@ -16,7 +21,7 @@ cat > "$agent" <<EOF
 <plist version="1.0">
 <dict>
 	<key>Label</key>
-	<string>kickstarter-vm</string>
+	<string>$label</string>
 	<key>Program</key>
 	<string>${esc}</string>
 	<key>RunAtLoad</key>
@@ -31,4 +36,6 @@ cat > "$agent" <<EOF
 </plist>
 EOF
 plutil -lint "$agent"
-launchctl bootstrap "gui/${uid}" "$agent"
+launchctl enable "$domain/$label"
+launchctl bootstrap "$domain" "$agent"
+print "$label started"
