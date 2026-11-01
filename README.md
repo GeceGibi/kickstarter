@@ -16,7 +16,7 @@ Xcode.app, signing certificates, and the GitHub Actions runner registration are 
 
 ## Login startup
 
-Add one absolute path per program in `kickstart/kickstart.sh`, then:
+Add one absolute path per line in `kickstart/paths`, then:
 
 ```sh
 ./kickstart/install.sh

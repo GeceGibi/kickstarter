@@ -1,16 +1,21 @@
 #!/bin/zsh
-# One absolute path per entry. Add or remove lines here.
-
-paths=(
-  # /Users/user/script.sh
-  # /Users/user/executable
-)
+# Paths live in ./paths, one absolute path per line. That file is not in git.
 
 list_only=0
 [[ "${1:-}" == "--files" ]] && list_only=1
 
 here="$(cd "$(dirname "$0")" && pwd)"
 mkdir -p "$here/.windows"
+
+paths=()
+if [[ -f "$here/paths" ]]; then
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    line="${line#"${line%%[![:space:]]*}"}"
+    line="${line%"${line##*[![:space:]]}"}"
+    [[ -z "$line" || "$line" == \#* ]] && continue
+    paths+=("$line")
+  done < "$here/paths"
+fi
 
 for target in "${paths[@]}"; do
   if [[ ! -e "$target" ]]; then
