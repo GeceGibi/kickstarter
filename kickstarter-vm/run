@@ -1,0 +1,12 @@
+#!/bin/zsh
+# Keeps one program alive inside the Terminal window kickstarter-vm opened.
+# A shebang shell does not read ~/.zprofile, so load the VM toolchain here.
+if [[ -f "$HOME/.zprofile" ]]; then
+  . "$HOME/.zprofile"
+fi
+target="$1"
+while true; do
+  "$target"
+  echo "exit $?"
+  /bin/sleep 10
+done

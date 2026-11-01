@@ -1,21 +1,21 @@
 # runner-setup
 
-Apple Silicon bootstrap for a Mac that builds Flutter iOS and Android.
+## Host
 
-## Setup
+On the host Mac, once:
+
+```sh
+./kickstarter-host/install.sh
+```
+
+That registers a login service. It clones `base-macos` to `ci-macos`, runs only the clone, and deletes the clone when it stops. Ten seconds later it clones again. `base-macos` is never started.
+
+## VM
+
+Inside the VM:
 
 ```sh
 ./setup.sh
 ```
 
-Re-run after a format. Tools that are already installed are left in place.
-
-Flutter goes to `$HOME/dev/flutter`. `setup.sh` writes `$HOME/dev/env.sh` and sources it from `~/.zshrc`. Open a new terminal after it finishes.
-
-Xcode.app, signing certificates, and the GitHub Actions runner registration are not installed by this script.
-
-## Login startup
-
-Run `./kickstart/install.sh` once. It registers `kickstart.sh` as the login agent.
-
-Add one absolute path per line in `kickstart/paths`. The next login reads that file. A new path does not need install again.
+That registers `kickstarter-vm`. Add one absolute path per line in `kickstarter-vm/paths`. The next login reads that file.
