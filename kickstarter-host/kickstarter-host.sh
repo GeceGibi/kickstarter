@@ -89,7 +89,6 @@ while true; do
   tart stop "$name" >/dev/null 2>&1 || true
   tart delete "$name" >/dev/null 2>&1 || true
   if tart clone "$base" "$name"; then
-    rm -f "${TART_HOME:-$HOME/.tart}/vms/$name/state.vzvmsave"
     start_vm &
   else
     echo "clone failed: $base -> $name" >&2
