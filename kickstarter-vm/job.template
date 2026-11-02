@@ -3,8 +3,9 @@
 # The last command holds the window. After it exits, this file runs from the top.
 set -e
 cd /absolute/path/scraper/python
-pip install -r requirements.txt
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
 cp app.settings.example.json app.settings.json
-python -m app --standings
-python -m app --fixtures
-python -m app --scheduler
+.venv/bin/python -m app --standings
+.venv/bin/python -m app --fixtures
+.venv/bin/python -m app --scheduler
