@@ -6,7 +6,11 @@ if [[ -f "$HOME/.zprofile" ]]; then
 fi
 target="$1"
 while true; do
-  "$target"
+  if [[ -x "$target" ]]; then
+    "$target"
+  else
+    /bin/zsh "$target"
+  fi
   echo "exit $?"
   /bin/sleep 10
 done

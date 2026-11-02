@@ -23,3 +23,5 @@ Once, while building `base-macos`:
 ```
 
 Put one absolute path per line in `kickstarter-vm/paths` before saving the image. Every clone starts that service at login. If a program exits, it is started again after 10 seconds. The VM can stay up for months.
+
+A Python app, or any startup that is more than one command, is one script. Copy `kickstarter-vm/job.template`, edit it, and put that copy's absolute path in `paths`. One path, one window. After the script exits, it runs again from the top.
