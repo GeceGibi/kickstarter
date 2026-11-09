@@ -18,7 +18,10 @@ final class RunnerState {
   final bool launchAgentInstalled;
   final bool busyAgent;
 
-  String get pathsFilePath => '$baseDir/paths';
+  String folderPath(ServiceGroup group) => '$baseDir/${group.folderName}';
+
+  String pathsJsonPath(ServiceGroup group) =>
+      '${folderPath(group)}/paths.json';
 
   List<ServiceItem> get serviceList => services.values.toList(growable: false);
 

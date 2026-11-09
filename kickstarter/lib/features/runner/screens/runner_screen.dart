@@ -24,7 +24,11 @@ final class RunnerScreen extends ConsumerWidget {
                 Expanded(
                   flex: 5,
                   child: services.isEmpty
-                      ? EmptyPathsView(onAdd: notifier.pickAndAddFiles)
+                      ? EmptyPathsView(
+                          onAddWorker: () => notifier.pickAndAddFiles(.worker),
+                          onAddGitAction: () =>
+                              notifier.pickAndAddFiles(.gitActions),
+                        )
                       : ListView.separated(
                           padding: const .all(16),
                           itemCount: services.length,

@@ -1,14 +1,19 @@
 part of 'services.dart';
 
-/// Service for native file picking and spawning/stopping background scripts.
+/// Service for native file picking, opening folders/files, and running background scripts.
 final class ProcessService {
   const ProcessService();
 
-  /// Opens the native macOS file picker and returns selected absolute paths.
-  Future<List<String>> pickFiles() async {
+  /// Opens the native macOS file picker (defaulting to [defaultDir]) and returns selected paths.
+  Future<List<String>> pickFiles({String? defaultDir}) async {
+    final defaultLocClause = switch (defaultDir) {
+      final dir? when Directory(dir).existsSync() =>
+        ' default location (POSIX file "$dir")',
+      _ => '',
+    };
     final result = await Process.run('/usr/bin/osascript', [
       '-e',
-      'set chosen to choose file with prompt "Select scripts or executables to run:" with multiple selections allowed',
+      'set chosen to choose file with prompt "Select scripts or executables:"$defaultLocClause with multiple selections allowed',
       '-e',
       'set output to ""',
       '-e',
@@ -28,6 +33,25 @@ final class ProcessService {
         .map((line) => line.trim())
         .where((line) => line.isNotEmpty)
         .toList();
+  }
+
+  /// Opens [folderPath] in macOS Finder.
+  Future<void> openFolder(String folderPath) async {
+    final dir = Directory(folderPath);
+    if (!dir.existsSync()) {
+      await dir.create(recursive: true);
+    }
+    await Process.run('/usr/bin/open', [folderPath]);
+  }
+
+  /// Opens [filePath] in the default macOS text editor.
+  Future<void> openFile(String filePath) async {
+    final file = File(filePath);
+    if (!file.existsSync()) {
+      await file.create(recursive: true);
+      await file.writeAsString('[]\n');
+    }
+    await Process.run('/usr/bin/open', ['-t', filePath]);
   }
 
   /// Starts [path] under `/bin/zsh` after sourcing `~/.zprofile`.
@@ -70,15 +94,6 @@ fi
         .listen((line) => onLog('[ERR] $line'));
 
     return proc;
-  }
-
-  /// Opens [pathsFilePath] in the default macOS text editor.
-  Future<void> openPathsFile(String pathsFilePath) async {
-    final file = File(pathsFilePath);
-    if (!file.existsSync()) {
-      await file.create(recursive: true);
-    }
-    await Process.run('/usr/bin/open', ['-t', pathsFilePath]);
   }
 
   /// Terminates [proc] and all of its descendant processes.

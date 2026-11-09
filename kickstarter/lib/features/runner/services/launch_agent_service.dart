@@ -27,11 +27,7 @@ final class LaunchAgentService {
       }
     }
 
-    var appBinary =
-        '$baseDir/build/macos/Build/Products/Release/kickstarter.app/Contents/MacOS/kickstarter';
-    if (!File(appBinary).existsSync()) {
-      appBinary = Platform.resolvedExecutable;
-    }
+    final appBinary = Platform.resolvedExecutable;
 
     final launchAgentsDir = Directory(
       '${Platform.environment['HOME']}/Library/LaunchAgents',
@@ -53,11 +49,6 @@ final class LaunchAgentService {
 \t</array>
 \t<key>WorkingDirectory</key>
 \t<string>$baseDir</string>
-\t<key>EnvironmentVariables</key>
-\t<dict>
-\t\t<key>KICKSTARTER_DIR</key>
-\t\t<string>$baseDir</string>
-\t</dict>
 \t<key>RunAtLoad</key>
 \t<true/>
 \t<key>LimitLoadToSessionType</key>

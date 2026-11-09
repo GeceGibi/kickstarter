@@ -3,7 +3,7 @@ part of 'pods.dart';
 /// Provider for the main runner state and process lifecycle controller.
 final runnerPod = NotifierProvider<RunnerPod, RunnerState>(RunnerPod.new);
 
-/// Manages background processes, 10s auto-restart timers, and 1s uptime ticks.
+/// Manages `~/.kickstarter` directories, background processes, 10s auto-restart, and 1s uptime ticks.
 final class RunnerPod extends Notifier<RunnerState> {
   final Map<String, Process> _processes = {};
   final Map<String, Timer> _restartTimers = {};
@@ -44,13 +44,14 @@ final class RunnerPod extends Notifier<RunnerState> {
     );
   }
 
-  /// Reads `kickstarter/paths` and reconciles running services.
+  /// Ensures `~/.kickstarter/{worker,git-actions}/paths.json` exist and reconciles running services.
   Future<void> reloadPaths() async {
-    final configured = await _pathsRepo.readPaths();
+    final configured = await _pathsRepo.readAll();
+    final configuredByPath = {for (final item in configured) item.path: item};
     final current = Map<String, ServiceItem>.of(state.services);
 
     final removed = current.keys
-        .where((path) => !configured.contains(path))
+        .where((path) => !configuredByPath.containsKey(path))
         .toList();
     for (final path in removed) {
       await _stopInternal(path);
@@ -58,10 +59,12 @@ final class RunnerPod extends Notifier<RunnerState> {
     }
 
     final added = <String>[];
-    for (final path in configured) {
-      if (!current.containsKey(path)) {
-        current[path] = ServiceItem(path: path);
-        added.add(path);
+    for (final item in configured) {
+      if (current[item.path] case final existing?) {
+        current[item.path] = existing.copyWith(group: item.group);
+      } else {
+        current[item.path] = item;
+        added.add(item.path);
       }
     }
 
@@ -78,26 +81,41 @@ final class RunnerPod extends Notifier<RunnerState> {
     }
   }
 
-  /// Opens native macOS file picker, appends new paths, and starts them.
-  Future<void> pickAndAddFiles() async {
-    final picked = await _processService.pickFiles();
+  /// Opens native macOS file picker, appends selected files to [group]'s `paths.json`, and starts them.
+  Future<void> pickAndAddFiles(ServiceGroup group) async {
+    await _pathsRepo.ensureStructure();
+    final picked = await _processService.pickFiles(
+      defaultDir: _pathsRepo.groupDir(group),
+    );
     if (picked.isEmpty) return;
 
     final current = Map<String, ServiceItem>.of(state.services);
     final added = <String>[];
     for (final path in picked) {
       if (current.containsKey(path)) continue;
-      current[path] = ServiceItem(path: path);
+      current[path] = ServiceItem(path: path, group: group);
       added.add(path);
     }
     if (added.isEmpty) return;
 
     state = state.copyWith(services: current);
-    await _pathsRepo.writePaths(current.keys);
+    await _pathsRepo.writeGroup(group, current.values);
 
     for (final path in added) {
       unawaited(startService(path));
     }
+  }
+
+  /// Opens `~/.kickstarter/<group>` folder in Finder.
+  Future<void> openGroupFolder(ServiceGroup group) async {
+    await _pathsRepo.ensureStructure();
+    await _processService.openFolder(_pathsRepo.groupDir(group));
+  }
+
+  /// Opens `~/.kickstarter/<group>/paths.json` in the system text editor.
+  Future<void> openGroupPathsJson(ServiceGroup group) async {
+    await _pathsRepo.ensureStructure();
+    await _processService.openFile(_pathsRepo.groupJsonPath(group));
   }
 
   /// Starts or restarts the service at [path].
@@ -186,15 +204,18 @@ final class RunnerPod extends Notifier<RunnerState> {
     });
   }
 
-  /// Stops a service and removes its path from `kickstarter/paths`.
+  /// Stops a service and removes its entry from `<group>/paths.json`.
   Future<void> removeService(String path) async {
+    final removedItem = state.services[path];
     await _stopInternal(path);
     final next = Map<String, ServiceItem>.of(state.services)..remove(path);
     state = state.copyWith(
       services: next,
       clearSelectedLog: state.selectedLogPath == path,
     );
-    await _pathsRepo.writePaths(next.keys);
+    if (removedItem != null) {
+      await _pathsRepo.writeGroup(removedItem.group, next.values);
+    }
   }
 
   /// Toggles the log drawer for [path].
@@ -209,11 +230,6 @@ final class RunnerPod extends Notifier<RunnerState> {
   /// Clears stored log lines for [path].
   void clearLogs(String path) {
     _updateItem(path, (item) => item.copyWith(logs: const []));
-  }
-
-  /// Opens `kickstarter/paths` in the system text editor.
-  Future<void> openPathsFile() async {
-    await _processService.openPathsFile(_pathsRepo.filePath);
   }
 
   /// Installs or uninstalls the login LaunchAgent.

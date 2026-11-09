@@ -1,49 +1,89 @@
 part of 'repos.dart';
 
-/// Repository for resolving the project directory and persisting `kickstarter/paths`.
+/// Repository managing `~/.kickstarter/<group>/paths.json` directories and files.
 final class PathsRepo {
   const PathsRepo({required this.baseDir});
 
   final String baseDir;
 
-  String get filePath => '$baseDir/paths';
-
-  /// Resolves the `kickstarter` root directory from environment or executable path.
+  /// Resolves `~/.kickstarter` as the application home directory.
   static String resolveBaseDir() {
-    if (Platform.environment['KICKSTARTER_DIR'] case final envDir?
-        when envDir.isNotEmpty) {
-      return envDir;
-    }
-    var dir = File(Platform.resolvedExecutable).parent;
-    for (var i = 0; i < 8; i++) {
-      if (File('${dir.path}/pubspec.yaml').existsSync()) {
-        return dir.path;
-      }
-      final parent = dir.parent;
-      if (parent.path == dir.path) break;
-      dir = parent;
-    }
-    return Directory.current.path;
+    final home = Platform.environment['HOME'] ?? '';
+    return '$home/.kickstarter';
   }
 
-  /// Reads distinct non-empty paths from `kickstarter/paths`.
-  Future<List<String>> readPaths() async {
-    final file = File(filePath);
-    if (!file.existsSync()) return const [];
-    final configured = <String>[];
-    for (final raw in await file.readAsLines()) {
-      final line = raw.trim();
-      if (line.isEmpty || line.startsWith('#')) continue;
-      if (!configured.contains(line)) {
-        configured.add(line);
+  /// Path to a group directory (`~/.kickstarter/worker` or `~/.kickstarter/git-actions`).
+  String groupDir(ServiceGroup group) => '$baseDir/${group.folderName}';
+
+  /// Path to a group's `paths.json` file.
+  String groupJsonPath(ServiceGroup group) =>
+      '${groupDir(group)}/paths.json';
+
+  /// Creates `~/.kickstarter/worker/paths.json` and `~/.kickstarter/git-actions/paths.json` if missing.
+  Future<void> ensureStructure() async {
+    for (final group in ServiceGroup.values) {
+      final dir = Directory(groupDir(group));
+      if (!dir.existsSync()) {
+        await dir.create(recursive: true);
+      }
+      final file = File(groupJsonPath(group));
+      if (!file.existsSync()) {
+        await file.writeAsString('[]\n');
       }
     }
-    return configured;
   }
 
-  /// Writes the given list of absolute paths to `kickstarter/paths`.
-  Future<void> writePaths(Iterable<String> paths) async {
-    final content = paths.join('\n');
-    await File(filePath).writeAsString(content.isEmpty ? '' : '$content\n');
+  /// Reads all configured [ServiceItem] entries across all groups.
+  Future<List<ServiceItem>> readAll() async {
+    await ensureStructure();
+    final items = <ServiceItem>[];
+    final seenPaths = <String>{};
+
+    for (final group in ServiceGroup.values) {
+      final file = File(groupJsonPath(group));
+      if (!file.existsSync()) continue;
+      final raw = (await file.readAsString()).trim();
+      if (raw.isEmpty) continue;
+
+      final Object? decoded;
+      try {
+        decoded = jsonDecode(raw);
+      } on FormatException {
+        continue;
+      }
+
+      if (decoded case final List<Object?> list) {
+        for (final entry in list) {
+          final item = switch (entry) {
+            final Map<String, Object?> map => ServiceItem.fromJson(map, group),
+            final String pathStr => ServiceItem(
+              path: pathStr.trim(),
+              group: group,
+            ),
+            _ => null,
+          };
+          if (item != null &&
+              item.path.isNotEmpty &&
+              seenPaths.add(item.path)) {
+            items.add(item);
+          }
+        }
+      }
+    }
+    return items;
+  }
+
+  /// Writes all items belonging to [group] into `<group>/paths.json`.
+  Future<void> writeGroup(
+    ServiceGroup group,
+    Iterable<ServiceItem> allItems,
+  ) async {
+    await ensureStructure();
+    final payload = allItems
+        .where((item) => item.group == group)
+        .map((item) => item.toJson())
+        .toList(growable: false);
+    const encoder = JsonEncoder.withIndent('  ');
+    await File(groupJsonPath(group)).writeAsString('${encoder.convert(payload)}\n');
   }
 }

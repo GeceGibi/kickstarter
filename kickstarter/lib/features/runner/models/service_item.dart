@@ -3,10 +3,21 @@ part of 'models.dart';
 /// Lifecycle status of a managed service.
 enum ServiceStatus { running, restarting, stopped, missing }
 
-/// Immutable representation of a single service entry from `kickstarter/paths`.
+/// Category folder under `~/.kickstarter/<folderName>/paths.json`.
+enum ServiceGroup {
+  worker('worker'),
+  gitActions('git-actions');
+
+  const ServiceGroup(this.folderName);
+
+  final String folderName;
+}
+
+/// Immutable representation of a single service entry in `paths.json`.
 final class ServiceItem {
   const ServiceItem({
     required this.path,
+    required this.group,
     this.status = .stopped,
     this.startedAt,
     this.lastExitCode,
@@ -14,12 +25,27 @@ final class ServiceItem {
     this.logs = const [],
   });
 
+  factory ServiceItem.fromJson(
+    Map<String, Object?> json,
+    ServiceGroup group,
+  ) {
+    final rawPath = switch (json['path']) {
+      final String s => s.trim(),
+      _ => '',
+    };
+    return ServiceItem(path: rawPath, group: group);
+  }
+
   final String path;
+  final ServiceGroup group;
   final ServiceStatus status;
   final DateTime? startedAt;
   final int? lastExitCode;
   final int restartCount;
   final List<String> logs;
+
+  /// Serializes this item for `paths.json`.
+  Map<String, Object?> toJson() => {'path': path};
 
   /// Short display name (`parent/file`).
   String get name {
@@ -39,6 +65,7 @@ final class ServiceItem {
 
   /// Returns a copy with updated fields.
   ServiceItem copyWith({
+    ServiceGroup? group,
     ServiceStatus? status,
     DateTime? startedAt,
     bool clearStartedAt = false,
@@ -48,6 +75,7 @@ final class ServiceItem {
   }) {
     return ServiceItem(
       path: path,
+      group: group ?? this.group,
       status: status ?? this.status,
       startedAt: clearStartedAt ? null : (startedAt ?? this.startedAt),
       lastExitCode: lastExitCode ?? this.lastExitCode,
