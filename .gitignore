@@ -1,5 +1,4 @@
 .DS_Store
-kickstarter-vm/.windows/
-kickstarter-vm/paths
-kickstarter-host/.console.pid
-kickstarter-host/.manual-stop
+kickstarter/paths
+kickstarter/build/
+kickstarter/.dart_tool/
