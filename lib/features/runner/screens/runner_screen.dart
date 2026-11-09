@@ -40,9 +40,11 @@ final class RunnerScreen extends ConsumerWidget {
                               item: item,
                               now: state.now,
                               isSelected: state.selectedLogPath == item.path,
+                              onSelect: () => notifier.selectLog(item.path),
                               onStart: () => notifier.startService(item.path),
                               onStop: () => notifier.stopService(item.path),
-                              onToggleLog: () => notifier.toggleLog(item.path),
+                              onUpdateArgs: (args) =>
+                                  notifier.updateArgs(item.path, args),
                               onRemove: () => notifier.removeService(item.path),
                             );
                           },
@@ -55,7 +57,7 @@ final class RunnerScreen extends ConsumerWidget {
                     child: LogViewerPanel(
                       item: selected,
                       onClear: () => notifier.clearLogs(selected.path),
-                      onClose: () => notifier.toggleLog(null),
+                      onClose: () => notifier.selectLog(null),
                     ),
                   ),
                 ],

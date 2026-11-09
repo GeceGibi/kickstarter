@@ -61,7 +61,10 @@ final class RunnerPod extends Notifier<RunnerState> {
     final added = <String>[];
     for (final item in configured) {
       if (current[item.path] case final existing?) {
-        current[item.path] = existing.copyWith(group: item.group);
+        current[item.path] = existing.copyWith(
+          group: item.group,
+          args: item.args,
+        );
       } else {
         current[item.path] = item;
         added.add(item.path);
@@ -137,16 +140,20 @@ final class RunnerPod extends Notifier<RunnerState> {
       return;
     }
 
+    final currentArgs = state.services[path]?.args ?? const <String>[];
+    final argsSuffix = currentArgs.isEmpty ? '' : ' ${currentArgs.join(' ')}';
+
     _updateItem(path, (item) {
       return _appendLog(
         item.copyWith(status: .running, startedAt: .now()),
-        'Starting: $path',
+        'Starting: $path$argsSuffix',
       );
     });
 
     try {
       final proc = await _processService.startScript(
         path: path,
+        args: currentArgs,
         onLog: (line) {
           _updateItem(path, (item) => _appendLog(item, line));
         },
@@ -218,9 +225,29 @@ final class RunnerPod extends Notifier<RunnerState> {
     }
   }
 
-  /// Toggles the log drawer for [path].
-  void toggleLog(String? path) {
-    if (path == null || state.selectedLogPath == path) {
+  /// Updates the CLI arguments for [path], writes them to `<group>/paths.json`, and restarts if active.
+  Future<void> updateArgs(String path, List<String> args) async {
+    final existing = state.services[path];
+    if (existing == null) return;
+
+    final cleaned = args
+        .map((a) => a.trim())
+        .where((a) => a.isNotEmpty)
+        .toList(growable: false);
+    final next = Map<String, ServiceItem>.of(state.services);
+    next[path] = existing.copyWith(args: cleaned);
+    state = state.copyWith(services: next);
+
+    await _pathsRepo.writeGroup(existing.group, next.values);
+
+    if (existing.status == .running || existing.status == .restarting) {
+      unawaited(startService(path));
+    }
+  }
+
+  /// Selects [path] to display in the log viewer panel (or closes it if `null`).
+  void selectLog(String? path) {
+    if (path == null) {
       state = state.copyWith(clearSelectedLog: true);
     } else {
       state = state.copyWith(selectedLogPath: path);

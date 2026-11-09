@@ -54,9 +54,10 @@ final class ProcessService {
     await Process.run('/usr/bin/open', ['-t', filePath]);
   }
 
-  /// Starts [path] under `/bin/zsh` after sourcing `~/.zprofile`.
+  /// Starts [path] with optional [args] under `/bin/zsh` after sourcing `~/.zprofile`.
   Future<Process?> startScript({
     required String path,
+    List<String> args = const [],
     required void Function(String line) onLog,
   }) async {
     const script = r'''
@@ -64,16 +65,17 @@ if [[ -f "$HOME/.zprofile" ]]; then
   . "$HOME/.zprofile"
 fi
 target="$1"
+shift
 if [[ -x "$target" ]]; then
-  "$target"
+  "$target" "$@"
 else
-  /bin/zsh "$target"
+  /bin/zsh "$target" "$@"
 fi
 ''';
 
     final proc = await Process.start(
       '/bin/zsh',
-      ['-c', script, 'kickstarter-run', path],
+      ['-c', script, 'kickstarter-run', path, ...args],
       workingDirectory: File(path).parent.path,
       environment: {
         ...Platform.environment,

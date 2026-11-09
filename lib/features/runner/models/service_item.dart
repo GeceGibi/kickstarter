@@ -18,6 +18,7 @@ final class ServiceItem {
   const ServiceItem({
     required this.path,
     required this.group,
+    this.args = const [],
     this.status = .stopped,
     this.startedAt,
     this.lastExitCode,
@@ -33,11 +34,22 @@ final class ServiceItem {
       final String s => s.trim(),
       _ => '',
     };
-    return ServiceItem(path: rawPath, group: group);
+    final parsedArgs = switch (json['args'] ?? json['arguments']) {
+      final List<Object?> list =>
+        list
+            .map((e) => e?.toString().trim() ?? '')
+            .where((s) => s.isNotEmpty)
+            .toList(growable: false),
+      final String s when s.trim().isNotEmpty =>
+        s.trim().split(RegExp(r'\s+')).toList(growable: false),
+      _ => const <String>[],
+    };
+    return ServiceItem(path: rawPath, group: group, args: parsedArgs);
   }
 
   final String path;
   final ServiceGroup group;
+  final List<String> args;
   final ServiceStatus status;
   final DateTime? startedAt;
   final int? lastExitCode;
@@ -45,7 +57,10 @@ final class ServiceItem {
   final List<String> logs;
 
   /// Serializes this item for `paths.json`.
-  Map<String, Object?> toJson() => {'path': path};
+  Map<String, Object?> toJson() => {
+    'path': path,
+    if (args.isNotEmpty) 'args': args,
+  };
 
   /// Short display name (`parent/file`).
   String get name {
@@ -66,6 +81,7 @@ final class ServiceItem {
   /// Returns a copy with updated fields.
   ServiceItem copyWith({
     ServiceGroup? group,
+    List<String>? args,
     ServiceStatus? status,
     DateTime? startedAt,
     bool clearStartedAt = false,
@@ -76,6 +92,7 @@ final class ServiceItem {
     return ServiceItem(
       path: path,
       group: group ?? this.group,
+      args: args ?? this.args,
       status: status ?? this.status,
       startedAt: clearStartedAt ? null : (startedAt ?? this.startedAt),
       lastExitCode: lastExitCode ?? this.lastExitCode,
