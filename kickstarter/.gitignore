@@ -30,7 +30,17 @@ migrate_working_dir/
 .flutter-plugins-dependencies
 .pub-cache/
 .pub/
-/build/
+/build/*
+!/build/macos/
+/build/macos/*
+!/build/macos/Build/
+/build/macos/Build/*
+!/build/macos/Build/Products/
+/build/macos/Build/Products/*
+!/build/macos/Build/Products/Release/
+/build/macos/Build/Products/Release/*
+!/build/macos/Build/Products/Release/kickstarter.app/
+!/build/macos/Build/Products/Release/kickstarter.app/**
 /coverage/
 
 # Symbolication related
