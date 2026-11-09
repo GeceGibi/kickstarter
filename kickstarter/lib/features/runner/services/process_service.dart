@@ -72,6 +72,15 @@ fi
     return proc;
   }
 
+  /// Opens [pathsFilePath] in the default macOS text editor.
+  Future<void> openPathsFile(String pathsFilePath) async {
+    final file = File(pathsFilePath);
+    if (!file.existsSync()) {
+      await file.create(recursive: true);
+    }
+    await Process.run('/usr/bin/open', ['-t', pathsFilePath]);
+  }
+
   /// Terminates [proc] and all of its descendant processes.
   Future<void> killProcessTree(Process proc) async {
     await _killChildren(proc.pid);

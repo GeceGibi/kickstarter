@@ -96,6 +96,15 @@ final class HeaderBar extends ConsumerWidget {
               ),
             ),
             const SizedBox(width: 8),
+            OutlinedButton.icon(
+              onPressed: notifier.openPathsFile,
+              icon: const Icon(Icons.description_outlined, size: 16),
+              label: const Text(
+                'Open paths',
+                style: TextStyle(fontSize: 12),
+              ),
+            ),
+            const SizedBox(width: 8),
             IconButton(
               tooltip: 'Reload paths file',
               onPressed: notifier.reloadPaths,

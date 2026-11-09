@@ -211,6 +211,11 @@ final class RunnerPod extends Notifier<RunnerState> {
     _updateItem(path, (item) => item.copyWith(logs: const []));
   }
 
+  /// Opens `kickstarter/paths` in the system text editor.
+  Future<void> openPathsFile() async {
+    await _processService.openPathsFile(_pathsRepo.filePath);
+  }
+
   /// Installs or uninstalls the login LaunchAgent.
   Future<String> toggleLaunchAgent() async {
     state = state.copyWith(busyAgent: true);
